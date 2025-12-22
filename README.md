@@ -91,8 +91,8 @@ ansible-playbook -i inventory/<cluster>/inventory.ini \
 
 | 버전 | Kubernetes | 상태 |
 |------|------------|------|
-| v2.29.1 | 1.32.x | 최신 |
-| v2.28.1 | 1.31.x | 안정 |
+| v2.29.1 | 1.33.x | 최신 |
+| v2.28.1 | 1.32.x | 안정 |
 
 ## 주의사항
 
