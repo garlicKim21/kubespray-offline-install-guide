@@ -138,8 +138,11 @@ containerd_registries_mirrors:
 ### 3.1. Kubespray Playbook 실행
 
 ```bash
-cd /root/kubespray
-ansible-playbook -i inventory/offline-test/inventory.ini cluster.yml
+cd ~/kubespray
+
+ansible-playbook -i inventory/offline-test/inventory.ini cluster.yml -f 23 -e @inventory/offline-test/custom-config.yml
+
+# -f: ansible-playbook 동시 실행
 ```
 
 > **참고:** `download_run_once=true`, `download_localhost=true` 옵션은 Ansible 컨트롤러에 nerdctl이 없으면 사용할 수 없다. 프록시 미러 환경에서는 각 노드에서 직접 pull하므로 이 옵션이 필요하지 않다.
