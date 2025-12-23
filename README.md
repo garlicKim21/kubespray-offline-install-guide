@@ -56,6 +56,7 @@ kubespray-offline-install-guide/
 2. **[02-rhel10-install.md](docs/day0-preparation/02-rhel10-install.md)** - RHEL 10 설치 및 Subscription 등록
 3. **[03-offline-prepare.md](docs/day0-preparation/03-offline-prepare.md)** - 오프라인 설치 파일 준비
 4. **[04-proxy-container-registry.md](docs/day0-preparation/04-proxy-container-registry.md)** - 프록시 컨테이너 레지스트리 구성
+5. **[05-version-matrix.md](docs/day0-preparation/05-version-matrix.md)** - 버전 호환성 매트릭스
 
 ### Day 1: 배포 단계
 
