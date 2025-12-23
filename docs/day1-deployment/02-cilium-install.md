@@ -3,221 +3,262 @@
 오프라인 환경에서 Cilium CNI를 설치한다.
 
 **사전 요구 사항:**
-- [04-kubespray-cluster-install.md](04-kubespray-cluster-install.md) - Kubernetes 클러스터 설치 완료
+- [01-cluster-install.md](01-cluster-install.md) - Kubernetes 클러스터 설치 완료
+- [Day 0 - Cilium 오프라인 준비](../day0-preparation/04-cilium-offline-prepare.md) 완료
 - kubectl이 설치되어 있고 클러스터에 접근 가능한 노드
 
-## 1. Cilium CLI 설치
+## 1. 파일 준비
 
-Cilium CLI는 Cilium 설치 및 관리를 위한 명령줄 도구이다.
+### 1.1. 소스 디렉토리 확인
 
-### 1.1. 온라인 환경에서 파일 다운로드
-
-온라인 환경이 있는 노드에서 Cilium CLI 바이너리를 다운로드한다.
+이 레포지토리의 `sources/cilium/` 디렉토리에서 필요한 파일을 확인한다.
 
 ```bash
-CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-CLI_ARCH=amd64
-if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
-curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+# 레포지토리 루트로 이동
+cd /path/to/kubespray-offline-install-guide
+
+# 파일 확인
+tree sources/cilium/
 ```
 
-### 1.2. 파일 전송
+**예상 출력:**
 
-다운로드한 파일을 kubectl을 사용할 노드로 전송한다.
-
-```bash
-scp cilium-linux-${CLI_ARCH}.tar.gz root@<target-node-ip>:/root
-scp cilium-linux-${CLI_ARCH}.tar.gz.sha256sum root@<target-node-ip>:/root
+```
+sources/cilium/
+├── cli/
+│   ├── cilium-linux-amd64.tar.gz
+│   ├── cilium-linux-amd64.tar.gz.sha256sum
+│   └── VERSION
+├── helm-charts/
+│   ├── cilium-1.17.10.tgz
+│   └── cilium-1.18.5.tgz
+└── values/
+    ├── cilium-values-1.17.yaml
+    └── cilium-values-1.18.yaml
 ```
 
-**참고:** `<target-node-ip>`는 실제 대상 노드의 IP 주소로 변경한다.
+### 1.2. 대상 노드로 파일 전송
 
-### 1.3. 바이너리 설치
-
-대상 노드에 접속하여 압축을 해제하고 바이너리를 설치한다.
+kubectl을 실행할 노드(일반적으로 Control Plane)로 필요한 파일을 전송한다.
 
 ```bash
-ssh root@<target-node-ip>
+# 설치할 Cilium 버전 설정
+CILIUM_VERSION=1.17.10  # 또는 1.18.5
+
+# 파일 전송
+TARGET_NODE=<control-plane-ip>
+
+scp sources/cilium/cli/cilium-linux-amd64.tar.gz root@${TARGET_NODE}:/root/
+scp sources/cilium/cli/cilium-linux-amd64.tar.gz.sha256sum root@${TARGET_NODE}:/root/
+scp sources/cilium/helm-charts/cilium-${CILIUM_VERSION}.tgz root@${TARGET_NODE}:/root/
+scp sources/cilium/values/cilium-values-${CILIUM_VERSION%.*}.yaml root@${TARGET_NODE}:/root/cilium-values.yaml
+```
+
+**참고:** `<control-plane-ip>`는 실제 대상 노드의 IP 주소로 변경한다.
+
+## 2. Cilium CLI 설치
+
+대상 노드에서 Cilium CLI를 설치한다.
+
+### 2.1. 체크섬 검증
+
+```bash
+ssh root@${TARGET_NODE}
 cd /root
-sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
-sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
-rm -f cilium-linux-${CLI_ARCH}.tar.gz cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+
+# 체크섬 검증
+sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
 ```
 
-### 1.4. 설치 확인
-
-Cilium CLI가 정상적으로 설치되었는지 확인한다.
+### 2.2. 바이너리 설치
 
 ```bash
+# 압축 해제 및 설치
+tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
+
+# 설치 확인
 cilium version --client
+
+# 임시 파일 정리
+rm -f cilium-linux-amd64.tar.gz cilium-linux-amd64.tar.gz.sha256sum
 ```
 
-정상적인 경우 다음과 같은 출력이 표시된다.
+**예상 출력:**
 
 ```
-cilium-cli: v0.16.x
-cilium image (default): v1.15.x
+cilium-cli: v0.18.9
 ```
 
-## 2. Cilium Helm Chart 설치
+## 3. Cilium 설치 (Helm)
 
-Helm을 사용하여 Cilium을 설치한다.
-
-### 2.1. Helm Chart 다운로드 및 압축 해제
-
-온라인 환경이 있는 노드에서 Cilium Helm Chart를 GitHub에서 직접 다운로드하고 압축을 해제한다.
+### 3.1. Helm Chart 압축 해제
 
 ```bash
-CILIUM_VERSION=v1.18.4
-wget https://github.com/cilium/cilium/archive/refs/tags/${CILIUM_VERSION}.tar.gz
-tar xzvf ${CILIUM_VERSION}.tar.gz
-```
-
-**참고:** `CILIUM_VERSION`은 설치할 Cilium 버전으로 변경한다. 최신 버전은 [Cilium Releases](https://github.com/cilium/cilium/releases)에서 확인할 수 있다.
-
-### 2.2. Helm Chart 전송
-
-압축 해제된 Helm Chart 디렉토리와 커스텀 values 파일을 대상 노드로 전송한다.
-
-```bash
-scp -r cilium-${CILIUM_VERSION}/ root@<target-node-ip>:/root
-scp cilium-values-custom.yaml root@<target-node-ip>:/root
-```
-
-**참고:** `<target-node-ip>`는 실제 대상 노드의 IP 주소로 변경한다.
-
-### 2.3. Values 파일 확인
-
-커스텀 values 파일의 설정을 확인하고 필요시 수정한다.
-
-**파일 경로:** `/root/cilium-values-custom.yaml`
-
-주요 설정 항목:
-- Kubernetes API 서버 설정
-- 네트워크 라우팅 모드
-- IPAM 설정
-- Hubble 관찰성 설정
-- Ingress Controller 설정
-
-**참고:** `cilium-values-custom.yaml` 파일의 상세 설정은 파일 내 주석을 참고한다.
-
-### 2.4. Cilium 설치
-
-대상 노드에서 Helm을 사용하여 Cilium을 설치한다.
-
-```bash
-ssh root@<target-node-ip>
 cd /root
-helm install cilium ./cilium-${CILIUM_VERSION} -n kube-system -f cilium-values-custom.yaml
+
+# 설치할 버전
+CILIUM_VERSION=1.17.10
+
+# Chart 압축 해제
+tar xzf cilium-${CILIUM_VERSION}.tgz
 ```
 
-**참고:** `CILIUM_VERSION`은 다운로드한 버전과 동일하게 설정한다.
+### 3.2. Values 파일 확인
 
-### 2.5. 설치 확인
-
-Cilium이 정상적으로 설치되었는지 확인한다.
+설치 전 Values 파일의 주요 설정을 확인한다.
 
 ```bash
-# Cilium Pod 상태 확인
-kubectl get pods -n kube-system -l k8s-app=cilium
+# 주요 설정 확인
+grep -E "^[a-zA-Z]|k8sServiceHost|k8sServicePort|clusterPoolIPv4PodCIDRList|routingMode" cilium-values.yaml
+```
 
-# Cilium 상태 확인
-cilium status
+**필수 확인 항목:**
 
-# Cilium 연결성 테스트
+| 설정 | 설명 | 확인 사항 |
+|------|------|----------|
+| `k8sServiceHost` | API Server 주소 | 실제 VIP 또는 LB 주소 |
+| `k8sServicePort` | API Server 포트 | 기본 6443 |
+| `clusterPoolIPv4PodCIDRList` | Pod CIDR | 클러스터 설정과 일치 |
+
+### 3.3. Cilium 설치
+
+```bash
+helm install cilium ./cilium \
+  --namespace kube-system \
+  -f cilium-values.yaml
+```
+
+### 3.4. 설치 확인
+
+```bash
+# Pod 상태 확인
+kubectl get pods -n kube-system -l app.kubernetes.io/part-of=cilium
+
+# Cilium 상태 확인 (CLI 사용)
+cilium status --wait
+
+# 모든 노드에서 Cilium Agent 실행 확인
+kubectl get pods -n kube-system -l k8s-app=cilium -o wide
+```
+
+**예상 출력:**
+
+```
+NAME           READY   STATUS    RESTARTS   AGE   IP              NODE
+cilium-xxxxx   1/1     Running   0          5m    192.168.1.101   node1
+cilium-yyyyy   1/1     Running   0          5m    192.168.1.102   node2
+```
+
+## 4. 연결성 테스트
+
+### 4.1. Cilium 연결성 테스트
+
+```bash
+# 기본 연결성 테스트
 cilium connectivity test
+
+# 특정 테스트만 실행 (빠른 확인)
+cilium connectivity test --test pod-to-pod
 ```
 
-정상적인 경우 Cilium Pod들이 모두 `Running` 상태여야 한다.
+**참고:** 연결성 테스트는 테스트용 Pod를 생성하므로 몇 분 소요될 수 있다.
 
-```
-NAME           READY   STATUS    RESTARTS   AGE
-cilium-xxxxx   1/1     Running   0          5m
-```
-
-## 3. 확인
-
-### 3.1. Cilium Agent 상태 확인
-
-모든 노드에서 Cilium Agent가 정상적으로 실행 중인지 확인한다.
+### 4.2. 수동 테스트
 
 ```bash
-cilium status
-```
+# 테스트 Pod 생성
+kubectl run test-pod --image=busybox --rm -it --restart=Never -- sh
 
-### 3.2. 네트워크 정책 테스트
-
-간단한 Pod를 생성하여 네트워크 연결을 테스트한다.
-
-```bash
-kubectl run test-pod --image=alpine --rm -it --restart=Never -- sh
-```
-
-Pod 내부에서 네트워크 연결을 테스트한다.
-
-```bash
-# DNS 확인
+# Pod 내부에서 테스트
 nslookup kubernetes.default.svc.cluster.local
-
-# 외부 연결 테스트
-ping -c 3 8.8.8.8
+ping -c 3 <other-pod-ip>
 ```
 
-### 3.3. Hubble UI 접근 확인
+## 5. Hubble 확인 (활성화된 경우)
 
-Hubble UI가 활성화된 경우 접근 가능한지 확인한다.
+### 5.1. Hubble 상태 확인
 
 ```bash
-# NodePort를 통한 접근
+cilium hubble status
+```
+
+### 5.2. Hubble UI 접근
+
+```bash
+# NodePort 서비스 확인
 kubectl get svc -n kube-system hubble-ui
 
-# Ingress를 통한 접근 (설정된 경우)
+# Ingress 확인 (설정된 경우)
 kubectl get ingress -n kube-system
 ```
 
-**참고:** Hubble UI는 NodePort 31235 또는 Ingress를 통해 접근할 수 있다.
+**참고:** Values 파일에서 Hubble UI NodePort가 31235로 설정되어 있다.
 
-## 4. 트러블슈팅
-
-### 4.1. 에러: "Cilium pods are not ready"
-
-**원인:** Cilium Pod가 정상적으로 시작되지 않음
-
-**해결:** Pod 로그 확인
+## 6. 설치 후 정리
 
 ```bash
-kubectl logs -n kube-system -l k8s-app=cilium
+# Helm Chart 디렉토리 정리
+rm -rf /root/cilium/
+rm -f /root/cilium-*.tgz
+rm -f /root/cilium-values.yaml
 ```
 
-### 4.2. 에러: "Unable to connect to API server"
+## 7. 트러블슈팅
 
-**원인:** Kubernetes API 서버 연결 실패
-
-**해결:** `cilium-values-custom.yaml`의 `k8sServiceHost`와 `k8sServicePort` 설정 확인
+### 7.1. Pod가 Running 상태가 아닌 경우
 
 ```bash
+# Pod 상세 정보 확인
+kubectl describe pod -n kube-system -l k8s-app=cilium
+
+# Pod 로그 확인
+kubectl logs -n kube-system -l k8s-app=cilium --tail=100
+```
+
+### 7.2. API Server 연결 실패
+
+**증상:** `Unable to connect to API server`
+
+**해결:**
+
+```bash
+# API Server 엔드포인트 확인
 kubectl get endpoints kubernetes -n default
+
+# Values 파일의 k8sServiceHost/Port 설정 확인
+grep -E "k8sServiceHost|k8sServicePort" cilium-values.yaml
 ```
 
-### 4.3. 에러: "IPAM allocation failed"
+### 7.3. IPAM 할당 실패
 
-**원인:** Pod CIDR 범위 부족 또는 설정 오류
+**증상:** `IPAM allocation failed`
 
-**해결:** `cilium-values-custom.yaml`의 IPAM 설정 확인
+**해결:**
 
 ```bash
-# 현재 Pod CIDR 확인
-kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}'
+# 노드의 Pod CIDR 확인
+kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.podCIDR}{"\n"}{end}'
+
+# Values 파일의 IPAM 설정 확인
+grep -A5 "ipam:" cilium-values.yaml
 ```
 
-### 4.4. 에러: "BGP peer not established"
+### 7.4. 이미지 Pull 실패
 
-**원인:** BGP Control Plane 설정 오류 또는 외부 라우터 연결 실패
+**증상:** `ImagePullBackOff` 또는 `ErrImagePull`
 
-**해결:** BGP 설정 확인 및 외부 라우터 연결 상태 확인
+**해결:**
 
 ```bash
-# BGP 피어 상태 확인
-cilium bgp peers list
+# 이미지 정보 확인
+kubectl get pods -n kube-system -l k8s-app=cilium -o jsonpath='{.items[*].spec.containers[*].image}'
+
+# containerd 레지스트리 설정 확인
+cat /etc/containerd/config.toml | grep -A10 "registry.mirrors"
 ```
+
+프록시 레지스트리 설정은 [05-proxy-container-registry.md](../day0-preparation/05-proxy-container-registry.md)를 참고한다.
+
+## 8. 다음 단계
+
+- [Day 2 - Cilium 업그레이드](../day2-operations/02-cilium-upgrade.md) - Cilium 버전 업그레이드

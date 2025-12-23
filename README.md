@@ -10,8 +10,10 @@ kubespray-offline-install-guide/
 │   ├── day0-preparation/           # Day 0: 설계 및 준비
 │   │   ├── 01-kubespray-version-guide.md
 │   │   ├── 02-rhel10-install.md
-│   │   ├── 03-offline-prepare.md
-│   │   └── 04-proxy-container-registry.md
+│   │   ├── 03-kubespray-offline-prepare.md
+│   │   ├── 04-cilium-offline-prepare.md
+│   │   ├── 05-proxy-container-registry.md
+│   │   └── 06-version-matrix.md
 │   ├── day1-deployment/            # Day 1: 설치 및 배포
 │   │   ├── 01-cluster-install.md
 │   │   └── 02-cilium-install.md
@@ -32,6 +34,9 @@ kubespray-offline-install-guide/
     │   ├── kubespray-2.28.1.tar.gz
     │   └── kubespray-2.29.1.tar.gz
     └── cilium/
+        ├── cli/                    # Cilium CLI 바이너리
+        ├── helm-charts/            # Helm Charts (.tgz)
+        └── values/                 # 버전별 Values 파일
 ```
 
 ## Day 0 / Day 1 / Day 2 운영 모델
@@ -54,9 +59,10 @@ kubespray-offline-install-guide/
 
 1. **[01-kubespray-version-guide.md](docs/day0-preparation/01-kubespray-version-guide.md)** - Kubespray 버전 및 소스 확보 방법
 2. **[02-rhel10-install.md](docs/day0-preparation/02-rhel10-install.md)** - RHEL 10 설치 및 Subscription 등록
-3. **[03-offline-prepare.md](docs/day0-preparation/03-offline-prepare.md)** - 오프라인 설치 파일 준비
-4. **[04-proxy-container-registry.md](docs/day0-preparation/04-proxy-container-registry.md)** - 프록시 컨테이너 레지스트리 구성
-5. **[05-version-matrix.md](docs/day0-preparation/05-version-matrix.md)** - 버전 호환성 매트릭스
+3. **[03-kubespray-offline-prepare.md](docs/day0-preparation/03-kubespray-offline-prepare.md)** - Kubespray 오프라인 설치 파일 준비
+4. **[04-cilium-offline-prepare.md](docs/day0-preparation/04-cilium-offline-prepare.md)** - Cilium 오프라인 설치 파일 준비
+5. **[05-proxy-container-registry.md](docs/day0-preparation/05-proxy-container-registry.md)** - 프록시 컨테이너 레지스트리 구성
+6. **[06-version-matrix.md](docs/day0-preparation/06-version-matrix.md)** - 버전 호환성 매트릭스
 
 ### Day 1: 배포 단계
 
