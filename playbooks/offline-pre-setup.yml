@@ -211,7 +211,7 @@
 
   - name: "[HOSTS] Display connectivity result"
     debug:
-      msg: "Repository server {{ 'reachable ✅' if ping_result.rc == 0 else 'unreachable ❌' }}"
+      msg: "Repository server {{ '[OK] reachable' if ping_result.rc == 0 else '[FAIL] unreachable' }}"
     tags:
     - hosts
     - verify
@@ -248,7 +248,7 @@
 
   - name: "[SWAP] Display swap status"
     debug:
-      msg: "{{ 'Swap is disabled ✅' if swap_status.stdout == '' else 'Swap is still active ❌: ' + swap_status.stdout }}"
+      msg: "{{ '[OK] Swap is disabled' if swap_status.stdout == '' else '[FAIL] Swap is still active: ' + swap_status.stdout }}"
     tags:
     - swap
     - verify
