@@ -100,14 +100,18 @@ Helm Chart에서 기본 values.yaml을 추출하여 참고할 수 있다.
 ```bash
 cd sources/cilium
 
-# Chart 압축 해제
-tar -xzf helm-charts/cilium-1.18.5.tgz
+# 설치할 버전 설정
+CILIUM_VERSION=1.18.5
+
+# Chart 압축 해제 후 버전별 디렉토리로 이름 변경
+tar -xzf helm-charts/cilium-${CILIUM_VERSION}.tgz
+mv cilium cilium-${CILIUM_VERSION}
 
 # 기본 values 확인
-cat cilium/values.yaml
+cat cilium-${CILIUM_VERSION}/values.yaml
 
 # 정리
-rm -rf cilium/
+rm -rf cilium-${CILIUM_VERSION}/
 ```
 
 ### 4.2. 버전별 Values 파일

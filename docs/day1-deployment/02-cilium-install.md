@@ -99,8 +99,9 @@ cd /root
 # 설치할 버전
 CILIUM_VERSION=1.17.10
 
-# Chart 압축 해제
+# Chart 압축 해제 후 버전별 디렉토리로 이름 변경
 tar xzf cilium-${CILIUM_VERSION}.tgz
+mv cilium cilium-${CILIUM_VERSION}
 ```
 
 ### 3.2. Values 파일 확인
@@ -123,9 +124,18 @@ grep -E "^[a-zA-Z]|k8sServiceHost|k8sServicePort|clusterPoolIPv4PodCIDRList|rout
 ### 3.3. Cilium 설치
 
 ```bash
-helm install cilium ./cilium \
+helm install cilium ./cilium-${CILIUM_VERSION} \
   --namespace kube-system \
   -f cilium-values.yaml
+```
+
+**Cilium CLI 사용 시 (Helm 미설치 환경):**
+
+```bash
+cilium install \
+  --chart-directory ./cilium-${CILIUM_VERSION} \
+  --helm-values ./cilium-values.yaml \
+  --version ${CILIUM_VERSION}
 ```
 
 ### 3.4. 설치 확인
@@ -198,7 +208,7 @@ kubectl get ingress -n kube-system
 
 ```bash
 # Helm Chart 디렉토리 정리
-rm -rf /root/cilium/
+rm -rf /root/cilium-${CILIUM_VERSION}/
 rm -f /root/cilium-*.tgz
 rm -f /root/cilium-values.yaml
 ```

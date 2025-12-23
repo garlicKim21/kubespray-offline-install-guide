@@ -12,6 +12,10 @@ Thumbs.db
 # Kubespray extracted directories (keep .tar.gz files)
 sources/kubespray/kubespray-*/
 
+# Cilium extracted directories (keep .tgz files)
+sources/cilium/cilium/
+sources/cilium/cilium-*/
+
 # Python virtual environments
 sources/kubespray/venv-*/
 venv/
