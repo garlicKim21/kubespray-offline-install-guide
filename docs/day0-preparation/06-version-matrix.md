@@ -40,7 +40,7 @@ Cilium은 [Kubernetes Patch Releases](https://kubernetes.io/releases/patch-relea
 
 **참고**: [Cilium Kubernetes Compatibility](https://docs.cilium.io/en/stable/network/kubernetes/compatibility/)
 
-> 💡 **일반 원칙**: Cilium 릴리즈 브랜치가 생성된 시점에 지원되던 Kubernetes 버전들이 해당 릴리즈의 유지보수 기간 동안 테스트됩니다.
+> **일반 원칙:** Cilium 릴리즈 브랜치가 생성된 시점에 지원되던 Kubernetes 버전들이 해당 릴리즈의 유지보수 기간 동안 테스트됩니다.
 
 ## 4. Cilium 시스템 요구사항
 
@@ -93,11 +93,11 @@ v1.15.x ─────►                            (EOL)
 
 | 배포판 | 커널 | Cilium 호환성 |
 |--------|------|--------------|
-| RHEL 10 | 6.12.x | ✅ 모든 기능 |
-| RHEL 9.x | 5.14.x | ✅ 기본 요구사항 충족 |
-| RHEL 8.10 | 4.18.x | ✅ 공식 지원 (동등 기능) |
-| Ubuntu 24.04 | 6.8.x | ✅ 모든 기능 |
-| Ubuntu 22.04 | 5.15.x | ✅ 기본 요구사항 충족 |
+| RHEL 10 | 6.12.x | 지원 (모든 기능) |
+| RHEL 9.x | 5.14.x | 지원 (기본 요구사항 충족) |
+| RHEL 8.10 | 4.18.x | 지원 (동등 기능) |
+| Ubuntu 24.04 | 6.8.x | 지원 (모든 기능) |
+| Ubuntu 22.04 | 5.15.x | 지원 (기본 요구사항 충족) |
 
 ## 8. 버전 선택 가이드
 
