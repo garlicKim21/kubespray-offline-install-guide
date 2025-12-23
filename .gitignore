@@ -9,4 +9,14 @@ offline-files.tar.gz
 .DS_Store
 Thumbs.db
 
+# Kubespray extracted directories (keep .tar.gz files)
+sources/kubespray/kubespray-*/
 
+# Python virtual environments
+sources/kubespray/venv-*/
+venv/
+.venv/
+*-venv/
+
+# Ansible artifacts
+*.retry
