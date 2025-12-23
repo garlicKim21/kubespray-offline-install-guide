@@ -14,6 +14,23 @@
 2. **Breaking Changes** 섹션을 주의 깊게 검토합니다.
 3. custom-config.yml에서 변경이 필요한 항목을 수정합니다.
 4. 새로 추가된 바이너리/이미지가 있다면 파일 서버에 추가합니다.
+5. 사전 검증 플레이북으로 리소스를 확인합니다. (아래 참조)
+
+## 사전 검증 도구
+
+업그레이드 전 오프라인 리소스가 준비되었는지 확인할 수 있습니다:
+
+```bash
+# 기본 실행
+ansible-playbook playbooks/verify-offline-resources.yml
+
+# Kubernetes 버전 지정
+ansible-playbook playbooks/verify-offline-resources.yml \
+  -e kube_version=<target_version>
+```
+
+이 플레이북은 localhost에서 실행되며, 파일 서버, 레지스트리, 필수 바이너리/이미지를 검증합니다.
+(`-i` 인벤토리 옵션 불필요)
 
 ## 노트 작성 규칙
 

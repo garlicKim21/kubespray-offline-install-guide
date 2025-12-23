@@ -40,6 +40,8 @@
 | 4 | 새 버전 컨테이너 이미지 프록시 캐시 확인 | ☐ |
 | 5 | custom-config.yml 호환성 검토 | ☐ |
 | 6 | 릴리즈 노트 확인 | ☐ |
+| 7 | **오프라인 리소스 검증 완료** (verify-offline-resources.yml) | ☐ |
+| 8 | **연결성 테스트 완료** (facts.yml) | ☐ |
 
 ### 2.2. 클러스터 상태 확인
 
@@ -202,22 +204,93 @@ kubespray_version: "v2.28.1"
 kubespray_version: "v2.29.1"
 ```
 
-### 3.3. Dry-Run 테스트 (선택사항)
+### 3.3. 사전 검증 (권장)
 
-> ⚠️ **주의**: `--check` 모드는 실제 파일을 다운로드하지 않으므로 일부 태스크에서 실패할 수 있습니다. 이는 예상된 동작입니다.
+실제 업그레이드 전에 문제가 없는지 확인하는 단계입니다.
+
+#### 3.3.1. `--check` 모드의 한계
+
+> ⚠️ **주의**: Ansible의 `--check` 모드는 dry-run으로 동작하지만, **이전 태스크의 결과에 의존하는 후속 태스크**에서 실패할 수 있습니다.
+
+예를 들어:
+1. 바이너리 다운로드 태스크 → `--check`에서는 실제 다운로드 안 함
+2. 다운로드된 파일 복사 태스크 → 파일이 없어서 실패
+
+```
+TASK [download : Prep_kubeadm_images | Copy kubeadm binary from download dir to system path]
+fatal: [...]: FAILED! => {"msg": "Source /tmp/releases/kubeadm-x.x.x-amd64 not found"}
+```
+
+이는 **예상된 동작**이며, 실제 배포 시에는 문제가 없습니다.
+
+#### 3.3.2. 권장 검증 순서
+
+`--check` 모드 대신 다음 순서로 검증하는 것을 권장합니다:
+
+**Step 1: 오프라인 리소스 검증**
+
+파일 서버와 레지스트리에 필요한 리소스가 있는지 확인합니다.
 
 ```bash
-# 가상환경이 활성화된 상태인지 확인
-which ansible  # $VENVDIR/bin/ansible 경로여야 함
-
 cd $KUBESPRAYDIR
 
+# 리소스 검증 플레이북 실행 (기본값 사용)
+ansible-playbook ../../../playbooks/verify-offline-resources.yml
+
+# 또는 Kubernetes 버전 지정
+ansible-playbook ../../../playbooks/verify-offline-resources.yml \
+  -e kube_version=1.33.7
+```
+
+> 💡 이 플레이북은 localhost에서만 실행되므로 `-i` 옵션(인벤토리)은 불필요합니다.
+
+이 플레이북은 다음을 검증합니다:
+- 파일 서버 접근 가능 여부
+- 필수 바이너리(kubeadm, kubelet, kubectl) 존재 여부
+- 컨테이너 레지스트리 접근 가능 여부
+- 필수 컨테이너 이미지 존재 여부
+
+**Step 2: 문법 검사**
+
+```bash
+ansible-playbook upgrade-cluster.yml \
+  -i inventory/offline-test/inventory.ini \
+  -e @inventory/offline-test/custom-config.yml \
+  --syntax-check
+```
+
+**Step 3: 연결성 테스트**
+
+```bash
+ansible-playbook playbooks/facts.yml \
+  -i inventory/offline-test/inventory.ini \
+  -e @inventory/offline-test/custom-config.yml
+```
+
+**Step 4: Control Plane 1대만 먼저 테스트 (선택사항)**
+
+안전하게 진행하려면 Control Plane 노드 1대만 먼저 업그레이드합니다:
+
+```bash
+ansible-playbook upgrade-cluster.yml \
+  -i inventory/offline-test/inventory.ini \
+  -e @inventory/offline-test/custom-config.yml \
+  --limit "ctrl01.example.com"
+```
+
+#### 3.3.3. --check 모드 (참고용)
+
+위 검증을 모두 완료한 후, 참고용으로 `--check` 모드를 실행할 수 있습니다:
+
+```bash
 ansible-playbook \
   -i inventory/offline-test/inventory.ini \
   -e @inventory/offline-test/custom-config.yml \
   --check \
   upgrade-cluster.yml
 ```
+
+> 💡 **참고**: 다운로드 관련 태스크에서 실패해도, 이전 검증 단계를 통과했다면 실제 배포는 성공합니다.
 
 ### 3.4. 업그레이드 실행
 
@@ -358,7 +431,8 @@ ansible-playbook upgrade-cluster.yml \
 
 | 오류 | 원인 | 해결 |
 |------|------|------|
-| `Source /tmp/releases/xxx not found` | 바이너리 다운로드 실패 | 파일 서버 확인, URL 설정 확인 |
+| `Source /tmp/releases/xxx not found` (--check 모드) | `--check` 모드의 한계 | 예상된 동작. [3.3.1 참조](#331-check-모드의-한계) |
+| `Source /tmp/releases/xxx not found` (실제 실행) | 바이너리 다운로드 실패 | 파일 서버 URL 확인, `verify-offline-resources.yml` 실행 |
 | `ImagePullBackOff` | 컨테이너 이미지 pull 실패 | 프록시 레지스트리 확인 |
 | `connection refused` | 노드 접근 불가 | 노드 상태 및 SSH 확인 |
 | `etcd cluster is unhealthy` | etcd 쿼럼 문제 | etcd 멤버 상태 확인 |
