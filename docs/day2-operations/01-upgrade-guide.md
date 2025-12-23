@@ -133,16 +133,63 @@ diff -u kubespray-2.28.1/roles/kubespray_defaults/defaults/main/download.yml \
 
 ## 3. 업그레이드 실행
 
-### 3.1. 인벤토리 준비
+### 3.1. Kubespray 소스 준비
 
-새 Kubespray 버전 디렉토리에 인벤토리를 복사합니다.
+#### 3.1.1. 새 버전 압축 해제
+
+`sources/kubespray` 디렉토리에서 새 버전의 Kubespray를 압축 해제합니다.
 
 ```bash
+cd /path/to/kubespray-offline-install-guide/sources/kubespray
+
+# 새 버전 압축 해제
+tar -xzf kubespray-2.29.1.tar.gz
+
+# 디렉토리 구조 확인
+ls -la
+# kubespray-2.28.1/
+# kubespray-2.29.1/  <- 새로 생성됨
+```
+
+#### 3.1.2. Python 가상환경 설정
+
+> ⚠️ **중요**: Kubespray 버전마다 의존성이 다르므로, 새 버전에 맞는 가상환경을 설정해야 합니다.
+
+```bash
+# 작업 디렉토리 설정
+KUBESPRAY_BASE=/path/to/kubespray-offline-install-guide/sources/kubespray
+KUBESPRAY_VERSION=2.29.1
+VENVDIR=${KUBESPRAY_BASE}/venv-${KUBESPRAY_VERSION}
+KUBESPRAYDIR=${KUBESPRAY_BASE}/kubespray-${KUBESPRAY_VERSION}
+
+# 가상환경 생성 및 활성화
+python3 -m venv $VENVDIR
+source $VENVDIR/bin/activate
+
+# 의존성 설치
+cd $KUBESPRAYDIR
+pip install -U pip
+pip install -r requirements.txt
+
+# 설치 확인
+ansible --version
+```
+
+**참고**: 버전별로 별도의 가상환경(`venv-2.28.1`, `venv-2.29.1`)을 유지하면 롤백 시에도 유용합니다.
+
+### 3.2. 인벤토리 준비
+
+기존 인벤토리를 새 Kubespray 버전 디렉토리로 복사합니다.
+
+```bash
+# 가상환경이 활성화된 상태에서 진행
+cd $KUBESPRAYDIR
+
 # 기존 인벤토리 복사
-cp -r kubespray-2.28.1/inventory/offline-test kubespray-2.29.1/inventory/
+cp -r ../kubespray-2.28.1/inventory/offline-test inventory/
 
 # custom-config.yml 버전 업데이트
-cd kubespray-2.29.1/inventory/offline-test
+cd inventory/offline-test
 ```
 
 `custom-config.yml`에서 버전 관련 설정을 업데이트합니다:
@@ -155,12 +202,15 @@ kubespray_version: "v2.28.1"
 kubespray_version: "v2.29.1"
 ```
 
-### 3.2. Dry-Run 테스트 (선택사항)
+### 3.3. Dry-Run 테스트 (선택사항)
 
 > ⚠️ **주의**: `--check` 모드는 실제 파일을 다운로드하지 않으므로 일부 태스크에서 실패할 수 있습니다. 이는 예상된 동작입니다.
 
 ```bash
-cd kubespray-2.29.1
+# 가상환경이 활성화된 상태인지 확인
+which ansible  # $VENVDIR/bin/ansible 경로여야 함
+
+cd $KUBESPRAYDIR
 
 ansible-playbook \
   -i inventory/offline-test/inventory.ini \
@@ -169,10 +219,10 @@ ansible-playbook \
   upgrade-cluster.yml
 ```
 
-### 3.3. 업그레이드 실행
+### 3.4. 업그레이드 실행
 
 ```bash
-cd kubespray-2.29.1
+cd $KUBESPRAYDIR
 
 ansible-playbook \
   -i inventory/offline-test/inventory.ini \
@@ -180,11 +230,11 @@ ansible-playbook \
   upgrade-cluster.yml
 ```
 
-### 3.4. 단계별 업그레이드 (권장)
+### 3.5. 단계별 업그레이드 (권장)
 
 대규모 클러스터에서는 단계별 업그레이드를 권장합니다.
 
-#### 3.4.1. Facts 캐시 갱신
+#### 3.5.1. Facts 캐시 갱신
 
 ```bash
 ansible-playbook playbooks/facts.yml \
@@ -192,7 +242,7 @@ ansible-playbook playbooks/facts.yml \
   -e @inventory/offline-test/custom-config.yml
 ```
 
-#### 3.4.2. Control Plane + etcd 먼저 업그레이드
+#### 3.5.2. Control Plane + etcd 먼저 업그레이드
 
 ```bash
 ansible-playbook upgrade-cluster.yml \
@@ -201,7 +251,7 @@ ansible-playbook upgrade-cluster.yml \
   --limit "kube_control_plane:etcd"
 ```
 
-#### 3.4.3. Worker 노드 업그레이드
+#### 3.5.3. Worker 노드 업그레이드
 
 ```bash
 # 특정 노드만
@@ -217,7 +267,7 @@ ansible-playbook upgrade-cluster.yml \
   --limit "worker*"
 ```
 
-### 3.5. 업그레이드 속도 제어
+### 3.6. 업그레이드 속도 제어
 
 동시에 업그레이드되는 노드 수를 제어할 수 있습니다.
 
@@ -229,7 +279,7 @@ ansible-playbook upgrade-cluster.yml \
   -e "serial=1"
 ```
 
-### 3.6. 일시 중지 옵션
+### 3.7. 일시 중지 옵션
 
 업그레이드 중 수동 확인이 필요한 경우:
 
